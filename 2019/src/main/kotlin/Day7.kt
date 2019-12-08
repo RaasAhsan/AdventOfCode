@@ -67,11 +67,21 @@ object Day7 {
     object Exit : Run()
     object Yield : Run()
 
+    const val OPCODE_ADD = 1
+    const val OPCODE_MUL = 2
+    const val OPCODE_READ = 3
+    const val OPCODE_WRITE = 4
+    const val OPCODE_JMP_IF_TRUE = 5
+    const val OPCODE_JMP_IF_FALSE = 6
+    const val OPCODE_LESS_THAN = 7
+    const val OPCODE_EQUALS = 8
+    const val OPCODE_EXIT = 99
+
     class Process(code: List<Int>) {
 
         private val program: MutableList<Int> = code.toMutableList()
-        var pc = 0
-        var done = false
+        private var pc = 0
+        private var done = false
         var input: ArrayDeque<Int> = ArrayDeque()
         var output: MutableList<ArrayDeque<Int>> = mutableListOf()
 
@@ -89,21 +99,21 @@ object Day7 {
                 val instruction = program[pc]
                 val opcode = instruction % 100
                 when (opcode) {
-                    1 -> {
+                    OPCODE_ADD -> {
                         val p1 = readByMode(pc, 0)
                         val p2 = readByMode(pc, 1)
                         val out = program[pc + 3]
                         program[out] = p1 + p2
                         pc += 4
                     }
-                    2 -> {
+                    OPCODE_MUL -> {
                         val p1 = readByMode(pc, 0)
                         val p2 = readByMode(pc, 1)
                         val out = program[pc + 3]
                         program[out] = p1 * p2
                         pc += 4
                     }
-                    3 -> {
+                    OPCODE_READ -> {
                         val dest = program[pc + 1]
                         if (input.size == 0) {
                             yielded = true
@@ -113,7 +123,7 @@ object Day7 {
                             pc += 2
                         }
                     }
-                    4 -> {
+                    OPCODE_WRITE -> {
                         val source = program[pc + 1]
                         val o = program[source]
                         output.forEach {
@@ -121,7 +131,7 @@ object Day7 {
                         }
                         pc += 2
                     }
-                    5 -> {
+                    OPCODE_JMP_IF_TRUE -> {
                         val p1 = readByMode(pc, 0)
                         val p2 = readByMode(pc, 1)
 
@@ -131,7 +141,7 @@ object Day7 {
                             pc += 3
                         }
                     }
-                    6 -> {
+                    OPCODE_JMP_IF_FALSE -> {
                         val p1 = readByMode(pc, 0)
                         val p2 = readByMode(pc, 1)
 
@@ -141,7 +151,7 @@ object Day7 {
                             pc += 3
                         }
                     }
-                    7 -> {
+                    OPCODE_LESS_THAN -> {
                         val p1 = readByMode(pc, 0)
                         val p2 = readByMode(pc, 1)
                         val p3 = program[pc + 3]
@@ -154,7 +164,7 @@ object Day7 {
 
                         pc += 4
                     }
-                    8 -> {
+                    OPCODE_EQUALS -> {
                         val p1 = readByMode(pc, 0)
                         val p2 = readByMode(pc, 1)
                         val p3 = program[pc + 3]
@@ -167,7 +177,7 @@ object Day7 {
 
                         pc += 4
                     }
-                    99 -> {
+                    OPCODE_EXIT -> {
 //                    println("Terminated successfully")
                         done = true
                     }
