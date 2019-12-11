@@ -49,12 +49,16 @@ object Day9 {
 
     class Process(code: List<Long>) {
 
-        private val program: MutableList<Long> = (code.toMutableList() + LongArray(8192).toMutableList()).toMutableList()
-        private var pc: Long = 0
+        private var pc: Int = 0
+        private var memory: Memory = Memory()
         private var relbase: Long = 0
         private var done = false
         var input: ArrayDeque<Long> = ArrayDeque()
         var output: MutableList<ArrayDeque<Long>> = mutableListOf()
+
+        init {
+            memory.writeMany(0, code)
+        }
 
         fun pipe(that: Process) {
             output.add(that.input)
@@ -67,7 +71,7 @@ object Day9 {
 
             var yielded = false
             while (!done && !yielded) {
-                val instruction = program[pc.toInt()]
+                val instruction = memory.read(pc)
                 val opcode = (instruction % 100).toInt()
                 when (opcode) {
                     OPCODE_ADD -> {
@@ -103,7 +107,7 @@ object Day9 {
                         val p2 = readValueByMode(pc, 1)
 
                         if (p1 != 0L) {
-                            pc = p2
+                            pc = p2.toInt()
                         } else {
                             pc += 3
                         }
@@ -113,7 +117,7 @@ object Day9 {
                         val p2 = readValueByMode(pc, 1)
 
                         if (p1 == 0L) {
-                            pc = p2
+                            pc = p2.toInt()
                         } else {
                             pc += 3
                         }
@@ -157,26 +161,76 @@ object Day9 {
             }
         }
 
-        private fun readValueByMode(pc: Long, n: Int): Long {
-            return program[readAddress(pc, n)]
+        private fun readValueByMode(pc: Int, n: Int): Long {
+            return memory.read(readAddress(pc, n))
         }
 
-        private fun writeValueByMode(pc: Long, n: Int, value: Long) {
-            program[readAddress(pc, n)] = value
+        private fun writeValueByMode(pc: Int, n: Int, value: Long) {
+            memory.write(readAddress(pc, n), value)
         }
 
         // 0 - positional addressing
         // 1 - immediate addressing
         // 2 - relative addressing
-        private fun readAddress(pc: Long, n: Int): Int {
-            val loc = pc.toInt()
-            val mode = (program[loc] / 10.0.pow(n + 2).toInt()) % 10
+        private fun readAddress(pc: Int, n: Int): Int {
+            val mode = (memory.read(pc) / 10.0.pow(n + 2).toInt()) % 10
             return when (mode) {
-                0L -> program[loc + n + 1].toInt()
-                1L -> loc + n + 1
-                2L -> (relbase + program[loc + n + 1]).toInt()
+                0L -> memory.read(pc + n + 1).toInt()
+                1L -> pc + n + 1
+                2L -> (relbase + memory.read(pc + n + 1)).toInt()
                 else -> exitProcess(0)
             }
+        }
+
+    }
+
+    // TODO: different memory implementations
+    class Memory {
+
+        private val pageSize = 100
+        private val memorySize = pageSize * 100
+
+        private val pages = mutableMapOf<Int, Int>()
+        private val array = LongArray(memorySize)
+        private val freeSpace = mutableListOf<Int>()
+
+        init {
+            for (i in 0 until memorySize step pageSize) {
+                freeSpace.add(i)
+            }
+        }
+
+        // pages are aligned to 100 long boundaries
+        fun write(address: Int, value: Long) {
+            val page = address / pageSize
+            val offset = address % pageSize
+
+            val physicalAddress = pages[page]
+            if (physicalAddress != null) {
+                array[physicalAddress + offset] = value
+            } else {
+                val newPhysicalAddress = freeSpace.removeAt(freeSpace.size - 1)
+                pages[page] = newPhysicalAddress
+                array[newPhysicalAddress + offset] = value
+            }
+        }
+
+        fun writeMany(address: Int, values: List<Long>) {
+            for (i in 0 until values.size) {
+                write(address + i, values[i])
+            }
+        }
+
+        fun write(address: Int, value: Int) {
+            write(address, value.toLong())
+        }
+
+        fun read(address: Int): Long {
+            val page = address / pageSize
+            val offset = address % pageSize
+
+            val physicalAddress = pages[page]
+            return array[physicalAddress!! + offset]
         }
 
     }
