@@ -229,6 +229,7 @@ object Day9 {
             val page = address / pageSize
             val offset = address % pageSize
 
+            // todo: error?
             val physicalAddress = pages[page]
             return array[physicalAddress!! + offset]
         }
